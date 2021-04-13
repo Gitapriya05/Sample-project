@@ -25,7 +25,11 @@ import com.kickstarter.services.ApiClientType
 import com.kickstarter.services.apiresponses.MessageThreadEnvelope
 import com.kickstarter.services.apiresponses.PushNotificationEnvelope
 import com.kickstarter.ui.IntentKey
-import com.kickstarter.ui.activities.*
+import com.kickstarter.ui.activities.ActivityFeedActivity
+import com.kickstarter.ui.activities.MessagesActivity
+import com.kickstarter.ui.activities.ProjectActivity
+import com.kickstarter.ui.activities.SurveyResponseActivity
+import com.kickstarter.ui.activities.UpdateActivity
 import com.squareup.picasso.Picasso
 import rx.Observable
 import rx.schedulers.Schedulers
@@ -33,19 +37,18 @@ import rx.subjects.PublishSubject
 import rx.subscriptions.CompositeSubscription
 import timber.log.Timber
 import java.io.IOException
-import java.util.*
 
 class PushNotifications(@field:ApplicationContext @param:ApplicationContext private val context: Context, private val client: ApiClientType) {
     private val notifications = PublishSubject.create<PushNotificationEnvelope>()
     private val subscriptions = CompositeSubscription()
     private val notificationChannels = arrayOf(
-            CHANNEL_ERRORED_PLEDGES,
-            CHANNEL_FOLLOWING,
-            CHANNEL_MESSAGES,
-            CHANNEL_PROJECT_ACTIVITY,
-            CHANNEL_PROJECT_REMINDER,
-            CHANNEL_PROJECT_UPDATES,
-            CHANNEL_SURVEY
+        CHANNEL_ERRORED_PLEDGES,
+        CHANNEL_FOLLOWING,
+        CHANNEL_MESSAGES,
+        CHANNEL_PROJECT_ACTIVITY,
+        CHANNEL_PROJECT_REMINDER,
+        CHANNEL_PROJECT_UPDATES,
+        CHANNEL_SURVEY
     )
     @get:TargetApi(Build.VERSION_CODES.O)
     private val listOfNotificationChannels: List<NotificationChannel>
