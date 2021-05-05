@@ -1,4 +1,6 @@
 <resources>
     <drawable name="com_appboy_push_small_notification_icon">@drawable/ic_kickstarter_micro_k</drawable>
     <item type="color" name="com_appboy_default_notification_accent_color">@color/kds_create_700</item>
+    <bool translatable="false" name="com_appboy_firebase_cloud_messaging_registration_enabled">true</bool>
+    <string translatable="false" name="com_appboy_firebase_cloud_messaging_sender_id">136483653139</string>
 </resources>

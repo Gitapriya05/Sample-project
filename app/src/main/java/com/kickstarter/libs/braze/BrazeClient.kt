@@ -117,16 +117,6 @@ open class BrazeClient(
 
     override fun init() {
         if (isSDKEnabled() && !this.initialized) {
-            val appBoyConfig = AppboyConfig.Builder()
-                .setIsFirebaseCloudMessagingRegistrationEnabled(true)
-                .setFirebaseCloudMessagingSenderIdKey(getIdSender())
-                // .setDefaultNotificationChannelName("General") --> TODO: Define notification channels for the new push notifications types
-                // .setDefaultNotificationChannelDescription("Braze related push")
-                .setHandlePushDeepLinksAutomatically(true)
-                .build()
-            Appboy.configure(context, appBoyConfig)
-            Timber.d("AppBoy configured by me")
-
             if (this.build.isDebug || Build.isInternal()) {
                 AppboyLogger.setLogLevel(Log.VERBOSE)
             }
