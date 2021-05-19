@@ -265,7 +265,7 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:host="www.kickstarter.com"
+                    android:host="*.kickstarter.com"
                     android:pathPrefix="/projects"
                     android:scheme="https" />
                 <data
@@ -275,6 +275,19 @@
                 <data
                     android:host="*.kickstarter.com"
                     android:pathPrefix="/settings/"
+                    android:scheme="https" />
+            </intent-filter>
+            <!-- EMAILS SUBDOMAINS -->
+            <!-- emails.kickstarter.com -->
+            <!-- me.kickstarter.com -->
+            <!-- ea.kickstarter.com -->
+            <!-- clicks.kickstarter.com -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="*.kickstarter.com"
                     android:scheme="https" />
             </intent-filter>
         </activity>
