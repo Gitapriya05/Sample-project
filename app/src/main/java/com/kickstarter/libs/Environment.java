@@ -15,6 +15,7 @@ import com.stripe.android.Stripe;
 import java.net.CookieManager;
 
 import auto.parcel.AutoParcel;
+import okhttp3.OkHttpClient;
 import rx.Scheduler;
 
 @AutoParcel
@@ -42,6 +43,7 @@ public abstract class Environment implements Parcelable {
   public abstract SharedPreferences sharedPreferences();
   public abstract Stripe stripe();
   public abstract WebClientType webClient();
+  public abstract OkHttpClient networkingClient();
   public abstract String webEndpoint();
 
   @AutoParcel.Builder
@@ -69,6 +71,7 @@ public abstract class Environment implements Parcelable {
     public abstract Builder sharedPreferences(SharedPreferences __);
     public abstract Builder stripe(Stripe __);
     public abstract Builder webClient(WebClientType __);
+    public abstract Builder networkingClient(OkHttpClient __);
     public abstract Builder webEndpoint(String __);
     public abstract Environment build();
   }

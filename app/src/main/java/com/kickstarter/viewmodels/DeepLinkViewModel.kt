@@ -13,12 +13,17 @@ import com.kickstarter.libs.utils.ObjectUtils
 import com.kickstarter.libs.utils.Secrets
 import com.kickstarter.libs.utils.UrlUtils.appendRefTag
 import com.kickstarter.libs.utils.UrlUtils.refTag
+import com.kickstarter.libs.utils.extensions.isEmailSubdomain
 import com.kickstarter.models.User
 import com.kickstarter.services.ApiClientType
 import com.kickstarter.services.KSUri
 import com.kickstarter.ui.activities.DeepLinkActivity
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
 import rx.Notification
 import rx.Observable
+import rx.schedulers.Schedulers
 import rx.subjects.BehaviorSubject
 
 interface DeepLinkViewModel {
@@ -53,9 +58,14 @@ interface DeepLinkViewModel {
         init {
             val apiClientType = environment.apiClient()
             val currentUser = environment.currentUser()
+            val networkingClient = environment.networkingClient()
+
             val uriFromIntent = intent()
                 .map { obj: Intent -> obj.data }
                 .ofType(Uri::class.java)
+                .filter { ObjectUtils.isNotNull(it) }
+                .map { requireNotNull(it) }
+                .distinctUntilChanged()
 
             uriFromIntent
                 .filter { lastPathSegmentIsProjects(it) }
@@ -66,16 +76,9 @@ interface DeepLinkViewModel {
                 }
 
             uriFromIntent
-                .filter { ObjectUtils.isNotNull(it) }
-                .filter {
-                    KSUri.isProjectUri(it, Secrets.WebEndpoint.PRODUCTION)
-                }
-                .filter {
-                    !KSUri.isCheckoutUri(it, Secrets.WebEndpoint.PRODUCTION)
-                }
-                .filter {
-                    !KSUri.isProjectPreviewUri(it, Secrets.WebEndpoint.PRODUCTION)
-                }
+                .filter { isProjectUrl(it) }
+                .filter { !isCheckoutUri(it) }
+                .filter { !isPreviewProjectUrl(it) }
                 .map { appendRefTagIfNone(it) }
                 .compose(bindToLifecycle())
                 .subscribe {
@@ -83,7 +86,6 @@ interface DeepLinkViewModel {
                 }
 
             uriFromIntent
-                .filter { ObjectUtils.isNotNull(it) }
                 .map { KSUri.isSettingsUrl(it) }
                 .compose(bindToLifecycle())
                 .subscribe {
@@ -106,7 +108,6 @@ interface DeepLinkViewModel {
                 }
 
             uriFromIntent
-                .filter { ObjectUtils.isNotNull(it) }
                 .filter { KSUri.isCheckoutUri(it, Secrets.WebEndpoint.PRODUCTION) }
                 .map { appendRefTagIfNone(it) }
                 .compose(bindToLifecycle())
@@ -114,15 +115,29 @@ interface DeepLinkViewModel {
                     startProjectActivityWithCheckout.onNext(it)
                 }
 
-            val projectPreview = uriFromIntent
+            val uriFromEmail = uriFromIntent
+                .filter { it.isEmailSubdomain() }
+                .observeOn(Schedulers.io())
+                .map { executeRedirection(it, networkingClient) }
                 .filter { ObjectUtils.isNotNull(it) }
-                .filter { KSUri.isProjectPreviewUri(it, Secrets.WebEndpoint.PRODUCTION) }
+                .map { requireNotNull(it) }
+
+            uriFromEmail
+                .compose(bindToLifecycle())
+                .subscribe {
+                    startProjectActivity.onNext(it)
+                }
+
+            val projectPreview = uriFromIntent
+                .filter { !it.isEmailSubdomain() }
+                .filter { isPreviewProjectUrl(it) }
 
             val unsupportedDeepLink = uriFromIntent
+                .filter { !it.isEmailSubdomain() }
                 .filter { !lastPathSegmentIsProjects(it) }
                 .filter { !KSUri.isSettingsUrl(it) }
                 .filter { !KSUri.isCheckoutUri(it, Secrets.WebEndpoint.PRODUCTION) }
-                .filter { !KSUri.isProjectUri(it, Secrets.WebEndpoint.PRODUCTION) }
+                .filter { !isProjectUrl(it) }
 
             Observable.merge(projectPreview, unsupportedDeepLink)
                 .map { obj: Uri -> obj.toString() }
@@ -149,6 +164,37 @@ interface DeepLinkViewModel {
         private fun lastPathSegmentIsProjects(uri: Uri): Boolean {
             return uri.lastPathSegment == "projects"
         }
+
+        private fun executeRedirection(fromEmailUri: Uri, networkingClient: OkHttpClient): Uri? {
+            var projectUri:Uri? = null
+            val request: Request = Request.Builder()
+                .url(fromEmailUri.toString())
+                .build()
+
+            // - Execute the network call with the email url
+            val response: Response = networkingClient.newCall(request).execute()
+
+            // a redirection took place from the email url to the project url the one we want
+            if (response.isRedirect) {
+                 val uri = Uri.parse(response.request.url.toString())
+                 if (isProjectUrl(uri)) projectUri = uri
+            }
+
+            return projectUri
+        }
+
+        private fun isProjectUrl(uri: Uri) =
+            KSUri.isProjectUri(uri, Secrets.WebEndpoint.PRODUCTION) ||
+                    KSUri.isProjectUri(uri, Secrets.WebEndpoint.STAGING)
+
+
+        private fun isPreviewProjectUrl(uri: Uri) =
+            !KSUri.isProjectPreviewUri(uri, Secrets.WebEndpoint.PRODUCTION) ||
+                    !KSUri.isProjectPreviewUri(uri, Secrets.WebEndpoint.STAGING)
+
+        private fun isCheckoutUri(uri: Uri) =
+            KSUri.isCheckoutUri(uri, Secrets.WebEndpoint.PRODUCTION) ||
+                    !KSUri.isCheckoutUri(uri, Secrets.WebEndpoint.STAGING)
 
         private fun updateSettings(
             user: User,

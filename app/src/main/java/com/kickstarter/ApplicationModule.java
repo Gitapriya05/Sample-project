@@ -140,6 +140,7 @@ public class ApplicationModule {
     final @NonNull SharedPreferences sharedPreferences,
     final @NonNull Stripe stripe,
     final @NonNull WebClientType webClient,
+    final @NonNull OkHttpClient networkingClient,
     final @NonNull @WebEndpoint String webEndpoint) {
 
     return Environment.builder()
@@ -167,6 +168,7 @@ public class ApplicationModule {
       .stripe(stripe)
       .webClient(webClient)
       .webEndpoint(webEndpoint)
+      .networkingClient(networkingClient)
       .build();
   }
 
