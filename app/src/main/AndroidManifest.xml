@@ -287,7 +287,16 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:host="*.kickstarter.com"
+                    android:host="clicks.kickstarter.com"
+                    android:scheme="https" />
+                <data
+                    android:host="emails.kickstarter.com"
+                    android:scheme="https" />
+                <data
+                    android:host="me.kickstarter.com"
+                    android:scheme="https" />
+                <data
+                    android:host="ea.kickstarter.com"
                     android:scheme="https" />
             </intent-filter>
         </activity>

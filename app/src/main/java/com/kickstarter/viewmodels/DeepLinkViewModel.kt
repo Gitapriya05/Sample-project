@@ -20,11 +20,11 @@ import com.kickstarter.services.KSUri
 import com.kickstarter.ui.activities.DeepLinkActivity
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.Response
 import rx.Notification
 import rx.Observable
 import rx.schedulers.Schedulers
 import rx.subjects.BehaviorSubject
+import java.io.IOException
 
 interface DeepLinkViewModel {
     interface Outputs {
@@ -48,6 +48,7 @@ interface DeepLinkViewModel {
         ActivityViewModel<DeepLinkActivity?>(environment), Outputs {
 
         private val startBrowser = BehaviorSubject.create<String>()
+        private val uriFromRedirect = BehaviorSubject.create<Uri>()
         private val startDiscoveryActivity = BehaviorSubject.create<Void>()
         private val startProjectActivity = BehaviorSubject.create<Uri>()
         private val startProjectActivityWithCheckout = BehaviorSubject.create<Uri>()
@@ -86,10 +87,10 @@ interface DeepLinkViewModel {
                 }
 
             uriFromIntent
-                .map { KSUri.isSettingsUrl(it) }
+                .filter { KSUri.isSettingsUrl(it) }
                 .compose(bindToLifecycle())
                 .subscribe {
-                    updateUserPreferences.onNext(it)
+                    updateUserPreferences.onNext(KSUri.isSettingsUrl(it))
                 }
 
             currentUser.observable()
@@ -115,17 +116,12 @@ interface DeepLinkViewModel {
                     startProjectActivityWithCheckout.onNext(it)
                 }
 
-            val uriFromEmail = uriFromIntent
+            uriFromIntent
                 .filter { it.isEmailSubdomain() }
                 .observeOn(Schedulers.io())
-                .map { executeRedirection(it, networkingClient) }
-                .filter { ObjectUtils.isNotNull(it) }
-                .map { requireNotNull(it) }
-
-            uriFromEmail
-                .compose(bindToLifecycle())
+                .subscribeOn(Schedulers.io())
                 .subscribe {
-                    startProjectActivity.onNext(it)
+                    executeRedirection(it, networkingClient)
                 }
 
             val projectPreview = uriFromIntent
@@ -140,7 +136,7 @@ interface DeepLinkViewModel {
                 .filter { !isProjectUrl(it) }
 
             Observable.merge(projectPreview, unsupportedDeepLink)
-                .map { obj: Uri -> obj.toString() }
+                .map { it.toString() }
                 .filter { !TextUtils.isEmpty(it) }
                 .compose(bindToLifecycle())
                 .subscribe {
@@ -165,36 +161,38 @@ interface DeepLinkViewModel {
             return uri.lastPathSegment == "projects"
         }
 
-        private fun executeRedirection(fromEmailUri: Uri, networkingClient: OkHttpClient): Uri? {
-            var projectUri:Uri? = null
-            val request: Request = Request.Builder()
-                .url(fromEmailUri.toString())
-                .build()
+        private fun executeRedirection(fromEmailUri: Uri, networkingClient: OkHttpClient) {
+            try {
+                val request: Request = Request.Builder()
+                    .url(fromEmailUri.toString())
+                    .build()
 
-            // - Execute the network call with the email url
-            val response: Response = networkingClient.newCall(request).execute()
+                val response = networkingClient.newCall(request).execute()
 
-            // a redirection took place from the email url to the project url the one we want
-            if (response.isRedirect) {
-                 val uri = Uri.parse(response.request.url.toString())
-                 if (isProjectUrl(uri)) projectUri = uri
+                // - a redirection took place from the email url to the project url
+                response.priorResponse?.isRedirect?.let {
+                    val uri = Uri.parse(response.request.url.toString())
+                    if (isProjectUrl(uri)) {
+                        // -  once we have the project url launch the project activity
+                        startProjectActivity.onNext(uri)
+                    }
+                }
+            } catch (exception: IOException) {
+                finishDeeplinkActivity.onNext(null)
             }
-
-            return projectUri
         }
 
         private fun isProjectUrl(uri: Uri) =
             KSUri.isProjectUri(uri, Secrets.WebEndpoint.PRODUCTION) ||
-                    KSUri.isProjectUri(uri, Secrets.WebEndpoint.STAGING)
-
+                KSUri.isProjectUri(uri, Secrets.WebEndpoint.STAGING)
 
         private fun isPreviewProjectUrl(uri: Uri) =
             !KSUri.isProjectPreviewUri(uri, Secrets.WebEndpoint.PRODUCTION) ||
-                    !KSUri.isProjectPreviewUri(uri, Secrets.WebEndpoint.STAGING)
+                !KSUri.isProjectPreviewUri(uri, Secrets.WebEndpoint.STAGING)
 
         private fun isCheckoutUri(uri: Uri) =
             KSUri.isCheckoutUri(uri, Secrets.WebEndpoint.PRODUCTION) ||
-                    !KSUri.isCheckoutUri(uri, Secrets.WebEndpoint.STAGING)
+                !KSUri.isCheckoutUri(uri, Secrets.WebEndpoint.STAGING)
 
         private fun updateSettings(
             user: User,

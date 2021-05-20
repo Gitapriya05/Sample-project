@@ -23,7 +23,7 @@ class DeepLinkActivity : BaseActivity<DeepLinkViewModel.ViewModel?>() {
         viewModel.outputs.startBrowser()
             .compose(bindToLifecycle())
             .compose(Transformers.observeForUI())
-            .subscribe { url: String -> startBrowser(url) }
+            .subscribe { startBrowser(it) }
 
         viewModel.outputs.startDiscoveryActivity()
             .compose(bindToLifecycle())
@@ -33,16 +33,12 @@ class DeepLinkActivity : BaseActivity<DeepLinkViewModel.ViewModel?>() {
         viewModel.outputs.startProjectActivity()
             .compose(bindToLifecycle())
             .compose(Transformers.observeForUI())
-            .subscribe { uri: Uri -> startProjectActivity(uri) }
+            .subscribe { startProjectActivity(it) }
 
         viewModel.outputs.startProjectActivityForCheckout()
             .compose(bindToLifecycle())
             .compose(Transformers.observeForUI())
-            .subscribe { uri: Uri ->
-                startProjectActivityForCheckout(
-                    uri
-                )
-            }
+            .subscribe { startProjectActivityForCheckout(it) }
 
         viewModel.outputs.finishDeeplinkActivity()
             .compose(bindToLifecycle())
